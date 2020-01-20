@@ -1,4 +1,4 @@
-# Copyright 2019 Cloudera Inc.
+# Copyright 2020 Cloudera Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ replace_star_with_cols <- function(exprs, cols) {
   is_star <- vapply(exprs, deparse, "") == "dplyr::everything()"
   column_indices <- seq_len(length(exprs))
   if (any(is_star)) {
-    for(star in which(is_star)) {
+    for (star in which(is_star)) {
       exprs <- c(
         exprs[column_indices[column_indices < star]],
         lapply(cols, as.symbol),
@@ -47,29 +47,29 @@ replace_alias_with_value <- function(expr, alias, value) {
 
 replace_aliases_with_values <- function(exprs, aliases, values) {
   lapply(exprs, function(expr) {
-    for(i in seq_along(aliases)) {
+    for (i in seq_along(aliases)) {
       expr <- replace_alias_with_value(expr, aliases[i], values[[i]])
     }
     expr
   })
 }
 
-replace_value_with_alias <- function(expr, value, alias) {
-  if (deparse(expr) == value) {
-    expr <- alias
-  }
-  if (length(expr) == 1) {
-    return(expr)
+replace_empty_name_with_value <- function(name_, value) {
+  if (!is.null(name_) && name_ != "") {
+    as.name(name_)
   } else {
-    return(as.call(lapply(expr, replace_value_with_alias, value, alias)))
+    value
   }
 }
 
-replace_values_with_aliases <- function(exprs, values, aliases) {
-  lapply(exprs, function(expr) {
-    for(i in seq_along(values)) {
-      expr <- replace_value_with_alias(expr, values[i], aliases[[i]])
-    }
-    expr
-  })
+replace_empty_names_with_values <- function(names_, values) {
+  if (is.null(names_)) {
+    names_ <- rep("", length(values))
+  }
+  mapply(
+    replace_empty_name_with_value,
+    name_ = names_,
+    value = values,
+    USE.NAMES = FALSE
+  )
 }

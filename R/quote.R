@@ -1,4 +1,4 @@
-# Copyright 2019 Cloudera Inc.
+# Copyright 2020 Cloudera Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ quote_column_in_expression <- function(expr, column) {
 
 quote_columns_in_expressions <- function(exprs, columns = NULL) {
   lapply(exprs, function(expr) {
-    for(column in columns) {
+    for (column in columns) {
       expr <- quote_column_in_expression(expr, column)
     }
     expr

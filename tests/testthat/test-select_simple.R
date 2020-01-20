@@ -6,6 +6,14 @@ test_that("Simple SELECT example query #1 returns expected result", {
   )
 })
 
+test_that("Simple SELECT example query #1 returns expected result when sql argument is passed by name", {
+  skip_if_not(exists("games"), message = "Test data not loaded")
+  expect_equal(
+    query(sql = "SELECT * FROM games"),
+    games
+  )
+})
+
 test_that("Simple SELECT example query #2 returns expected result", {
   skip_if_not(exists("games"), message = "Test data not loaded")
   expect_equal(
@@ -103,6 +111,22 @@ test_that("Simple SELECT example query #13 returns expected result", {
   skip_if_not(exists("crayons"), message = "Test data not loaded")
   expect_equal(
     query("SELECT ALL red, green, blue FROM crayons;"),
+    crayons %>% select(red, green, blue)
+  )
+})
+
+test_that("Simple SELECT example query #14 returns expected result", {
+  skip_if_not(exists("crayons"), message = "Test data not loaded")
+  expect_equal(
+    query("SELECT crayons.red, crayons.green, crayons.blue FROM crayons;"),
+    crayons %>% select(red, green, blue)
+  )
+})
+
+test_that("Simple SELECT example query #15 returns expected result", {
+  skip_if_not(exists("crayons"), message = "Test data not loaded")
+  expect_equal(
+    query("SELECT c.red, c.green, c.blue FROM crayons c;"),
     crayons %>% select(red, green, blue)
   )
 })

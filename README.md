@@ -3,10 +3,6 @@
 
 # tidyquery <img src="man/figures/logo.png" align="right" width="120" />
 
-<!-- badges: start -->
-
-<!-- badges: end -->
-
 **tidyquery** runs SQL queries on R data frames.
 
 It uses [queryparser](https://github.com/ianmcook/queryparser) to
@@ -18,14 +14,14 @@ it queries them in place.
 ## Installation
 
 Install the released version of **tidyquery** from
-[CRAN](https://CRAN.R-project.org) with:
+[CRAN](https://CRAN.R-project.org/package=tidyquery) with:
 
 ``` r
 install.packages("tidyquery")
 ```
 
-Or install the development version from [GitHub](https://github.com/)
-with:
+Or install the development version from
+[GitHub](https://github.com/ianmcook/tidyquery) with:
 
 ``` r
 # install.packages("devtools")
@@ -34,9 +30,14 @@ devtools::install_github("ianmcook/tidyquery")
 
 ## Usage
 
-Call the function `query()`, passing a `SELECT` statement enclosed in
-quotes as the first argument. The table name in the `FROM` clause should
-match the name of a data frame in your current R session:
+**tidyquery** exports two functions: `query()` and `show_dplyr()`.
+
+### Using `query()`
+
+To run a SQL query on an R data frame, call the function `query()`,
+passing a `SELECT` statement enclosed in quotes as the first argument.
+The table names in the `FROM` clause should match the names of data
+frames in your current R session:
 
 ``` r
 library(tidyquery)
@@ -45,38 +46,31 @@ library(nycflights13)
 query(
 " SELECT origin, dest,
     COUNT(flight) AS num_flts,
-    round(AVG(distance)) AS dist,
+    round(SUM(seats)) AS num_seats,
     round(AVG(arr_delay)) AS avg_delay
-  FROM flights
+  FROM flights f LEFT OUTER JOIN planes p
+    ON f.tailnum = p.tailnum
   WHERE distance BETWEEN 200 AND 300
     AND air_time IS NOT NULL
   GROUP BY origin, dest
   HAVING num_flts > 3000
-  ORDER BY num_flts DESC, avg_delay DESC
-  LIMIT 100;"
+  ORDER BY num_seats DESC, avg_delay ASC
+  LIMIT 2;"
 )
-#> # A tibble: 3 x 5
-#>   origin dest  num_flts  dist avg_delay
-#>   <chr>  <chr>    <int> <dbl>     <dbl>
-#> 1 EWR    BOS       5247   200         5
-#> 2 LGA    DCA       4468   214         6
-#> 3 JFK    DCA       3076   213         8
+#> # A tibble: 2 x 5
+#>   origin dest  num_flts num_seats avg_delay
+#>   <chr>  <chr>    <int>     <dbl>     <dbl>
+#> 1 LGA    DCA       4468    712643         6
+#> 2 EWR    BOS       5247    611192         5
 ```
 
-Alternatively, you can pass a data frame as the first argument and a
-`SELECT` statement as the second argument, omitting the `FROM` clause.
-This allows `query()` to function like a dplyr verb:
+Alternatively, for single-table queries, you can pass a data frame as
+the first argument and a `SELECT` statement as the second argument,
+omitting the `FROM` clause. This allows `query()` to function like a
+dplyr verb:
 
 ``` r
 library(dplyr)
-#> 
-#> Attaching package: 'dplyr'
-#> The following objects are masked from 'package:stats':
-#> 
-#>     filter, lag
-#> The following objects are masked from 'package:base':
-#> 
-#>     intersect, setdiff, setequal, union
 
 airports %>%
   query("SELECT name, lat, lon ORDER BY lat DESC LIMIT 5")
@@ -109,13 +103,41 @@ planes %>%
 ```
 
 In the `SELECT` statement, the names of data frames and columns are
-case-sensitive (like in R) and the names of keywords and function names
-are case-insensitive (like in SQL).
+case-sensitive (like in R) but keywords and function names are
+case-insensitive (like in SQL).
 
-It is possible to use `query()` with
-[dbplyr](https://dbplyr.tidyverse.org) to query remote database tables
-(`tbl_sql` objects), but this depends on which database and which
-backend package (if any) you are using, so results may vary.
+In addition to R data frames and tibbles (`tbl_df` objects), `query()`
+can be used to query other data frame-like objects, including:
+
+  - `dtplyr_step` objects created with
+    [dtplyr](https://dtplyr.tidyverse.org), a
+    [data.table](http://r-datatable.com/) backend for dplyr
+  - `tbl_sql` objects created with
+    [dbplyr](https://dbplyr.tidyverse.org) or a dbplyr backend package,
+    enabling you to write SQL which is translated to dplyr then
+    translated back to SQL and run in a database 🤪
+
+### Using `show_dplyr()`
+
+**tidyquery** works by generating dplyr code. To print the dplyr code
+instead of running it, use `show_dplyr()`:
+
+``` r
+show_dplyr(
+" SELECT manufacturer, 
+    COUNT(*) AS num_planes
+  FROM planes
+  WHERE engine = 'Turbo-fan'
+  GROUP BY manufacturer
+  ORDER BY num_planes DESC;"
+)
+#> planes %>%
+#>   filter(engine == "Turbo-fan") %>%
+#>   group_by(manufacturer) %>%
+#>   summarise(num_planes = dplyr::n()) %>%
+#>   ungroup() %>%
+#>   arrange(dplyr::desc(num_planes))
+```
 
 ## Current Limitations
 
@@ -125,3 +147,32 @@ queryparser README on
 [CRAN](https://cran.r-project.org/package=queryparser/readme/README.html#current-limitations)
 or
 [GitHub](https://github.com/ianmcook/queryparser#current-limitations).
+
+**tidyquery** also has the following additional limitations:
+
+  - Joins involving three or more tables are not supported.
+  - Because joins in dplyr currently work in a fundamentally different
+    way than joins in SQL, some other types of join queries are not
+    supported. Examples of unsupported join queries include non-equijoin
+    queries and outer join queries with qualified references to the join
+    column(s). Planned changes in dplyr will enable future versions of
+    tidyquery to support more types of joins.
+  - In the code printed by `show_dplyr()`, calls to functions with more
+    than five arguments might be truncated, with arguments after the
+    fifth replaced with `...`. This is caused by a current limitation of
+    the rlang package that is expected to be resolved in a future
+    version.
+
+## Related Work
+
+The **sqldf** package ([CRAN](https://cran.r-project.org/package=sqldf),
+[GitHub](https://github.com/ggrothendieck/sqldf)) runs SQL queries on R
+data frames by transparently setting up a database, loading data from R
+data frames into the database, running SQL queries in the database, and
+returning results as R data frames.
+
+The **[dbplyr](https://dbplyr.tidyverse.org)** package
+([CRAN](https://cran.r-project.org/package=dbplyr),
+[GitHub](https://github.com/tidyverse/dbplyr)) is like tidyquery in
+reverse: it converts dplyr code into SQL, allowing you to use dplyr to
+work with data in a database.

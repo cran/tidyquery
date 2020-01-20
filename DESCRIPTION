@@ -1,7 +1,7 @@
 Package: tidyquery
 Type: Package
 Title: Query 'R' Data Frames with 'SQL'
-Version: 0.1.0
+Version: 0.2.0
 Authors@R: c(
     person("Ian", "Cook", email = "ian@cloudera.com", role = c("aut", "cre")),
     person(family = "Cloudera", role = c("cph"))
@@ -13,14 +13,15 @@ BugReports: https://github.com/ianmcook/tidyquery/issues
 NeedsCompilation: no
 License: Apache License 2.0
 Encoding: UTF-8
-RoxygenNote: 6.1.1
+RoxygenNote: 7.0.2
 Imports: dplyr (>= 0.7.4), lubridate (>= 1.6.0), queryparser (>=
-        0.1.1), stringr (>= 1.0.0), utils
-Suggests: nycflights13, testthat (>= 2.1.0)
-Collate: 'compat.R' 'query.R' 'quote.R' 'remove.R' 'replace.R'
-        'unscope.R'
-Packaged: 2019-09-07 13:03:22 UTC; icook
+        0.2.0), rlang (>= 0.2.0), stringr (>= 1.0.0), utils
+Suggests: covr (>= 3.2.0), dbplyr (>= 1.2.1), dtplyr (>= 1.0.0),
+        nycflights13, RSQLite (>= 2.1.0), testthat (>= 2.1.0)
+Collate: 'compat.R' 'query.R' 'join.R' 'quote.R' 'remove.R' 'replace.R'
+        'show_dplyr.R' 'unscope.R'
+Packaged: 2020-01-20 18:29:08 UTC; icook
 Author: Ian Cook [aut, cre],
   Cloudera [cph]
 Repository: CRAN
-Date/Publication: 2019-09-19 16:40:02 UTC
+Date/Publication: 2020-01-20 18:50:03 UTC

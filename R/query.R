@@ -1,4 +1,4 @@
-# Copyright 2019 Cloudera Inc.
+# Copyright 2020 Cloudera Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,6 +15,11 @@
 #' @include compat.R
 NULL
 
+# import something from lubridate and stringr to stop "All declared Imports should be used" NOTE
+#' @importFrom lubridate ymd
+#' @importFrom stringr str_count
+NULL
+
 #' Query an R data frame with SQL
 #'
 #' @description \code{query} takes a SQL \code{SELECT} statement and uses it to
@@ -29,10 +34,12 @@ NULL
 #'   The names of data frames and columns are case-sensitive (like in R).
 #'   Keywords and function names are not case-sensitive (like in SQL).
 #'
-#'   It is possible to use this function together with \pkg{dbplyr} to query
-#'   remote database tables (\code{tbl_sql} objects), but this depends on which
-#'   database and which backend package (if any) you are using, so results may
-#'   vary.
+#'   In addition to R data frames and tibbles (\code{tbl_df} objects), this
+#'   function can query \code{dtplyr_step} objects created by \pkg{dtplyr}, a
+#'   \pkg{data.table} backend for \pkg{dbplyr}. It is also possible to use this
+#'   function together with \pkg{dbplyr} to query remote database tables
+#'   (\code{tbl_sql} objects), but this depends on which database and which
+#'   backend package (if any) you are using, so results may vary.
 #'
 #'   This function is subject to the
 #'   \href{https://cran.r-project.org/package=queryparser/readme/README.html#current-limitations}{current
@@ -65,15 +72,25 @@ NULL
 #'   LIMIT 100;"
 #'
 #' query(query)
-#' @importFrom dplyr %>%
-#' @importFrom dplyr mutate transmute select distinct filter summarise group_by arrange
-#' @importFrom dplyr is_grouped_df ungroup
-#' @importFrom queryparser parse_query
-#' @importFrom utils head
 #' @export
 query <- function(data, sql) {
+  query_(data, sql, TRUE)
+}
+
+#' @importFrom dplyr %>%
+#' @importFrom dplyr mutate transmute select distinct filter summarise group_by arrange
+#' @importFrom dplyr ungroup
+#' @importFrom queryparser parse_query unqualify_query
+#' @importFrom utils head
+query_ <- function(data, sql, query = TRUE) {
+  if (query) {
+    fun_name <- "query"
+  } else {
+    fun_name <- "show_dplyr"
+  }
+
   if (missing("data") && missing("sql")) {
-    stop("0 arguments passed to query() which requires 1 or 2 arguments")
+    stop("0 arguments passed to ", fun_name,"() which requires 1 or 2 arguments", call. = FALSE)
   }
   if (missing("sql")) {
     sql <- NULL
@@ -81,169 +98,257 @@ query <- function(data, sql) {
   if (missing("data")) {
     data <- NULL
   }
-  if (!is.data.frame(data) && !inherits(data, "tbl") && is.character(data)) {
-    if (is.data.frame(sql) || inherits(sql, "tbl")) {
-      stop("When calling query() with two arguments, specify the data first and the SQL statement second")
+  if (!is_supported_data_object(data) && is.character(data)) {
+    if (is_supported_data_object(sql)) {
+      stop("When calling ", fun_name, "() with two arguments, ",
+           "specify the data first and the SQL statement second", call. = FALSE)
+    } else if (!is.null(sql)) {
+      stop("Unexpected input to ", fun_name, "()", call. = FALSE)
     }
     sql <- data
   }
-  if (!is.character(sql) || length(sql) != 1) {
-    stop("The first or second argument to query() must be a character vector of length 1")
+  if ((!is.character(sql) || length(sql) != 1) && (!is.character(data) || length(data) != 1)) {
+    stop("The first or second argument to ",
+         fun_name, "() must be a character vector of length 1", call. = FALSE)
   }
 
   tree <- parse_query(sql, tidyverse = TRUE)
 
+
   ### from clause ###
   if (is.null(tree$from)) {
 
-    if (!is.data.frame(data) && !inherits(data, "tbl")) {
-      stop("When calling query(), you must specify which data frame to query ",
+    if (!is_supported_data_object(data)) {
+      stop("When calling ", fun_name, "(), you must specify which data frame to query ",
            "in the FROM clause of the SQL statement ",
-           "or by passing a data frame as the first argument")
+           "or by passing a data frame as the first argument", call. = FALSE)
     }
+    out <- list()
+    out$data <- data
+    rm(data)
+    out$code <- paste0("<", class(data)[1], ">")
 
   } else {
 
-    if (is.data.frame(data) || inherits(data, "tbl")) {
-      stop("When calling query(), specify which data frame to query ",
-           "using either the first argument or the FROM clause, not both")
+    if (is_supported_data_object(data)) {
+      stop("When calling ", fun_name, "(), specify which data frame to query ",
+           "using either the first argument or the FROM clause, not both", call. = FALSE)
     }
-    data <- tryCatch({
-      eval(tree$from[[1]])
-    }, error = function(e) {
-      NULL
-    })
-    if (is.null(data)) {
-      stop("No data frame exists with the name specified in the FROM clause")
-    }
-    if (!is.data.frame(data) && !inherits(data, "tbl")) {
-      stop("The object with the name specified in the FROM clause is not a data frame")
+
+    out <- join(tree)
+
+    if (length(tree$from) > 1) {
+
+      # unqualify column references that do not need qualificaiton
+      table_names <- as.character(tree$from)
+      if (!is.null(names(tree$from))) {
+        table_aliases <- names(tree$from)
+      } else {
+        table_aliases <- character(0)
+      }
+      table_prefixes <- c(table_names, table_aliases)
+      tree <- unqualify_query(tree, prefixes = table_prefixes, except = column_names(out$data))
+
     }
 
   }
 
-  out <- data
+  if (is_grouped_data_object(out$data)) {
+    stop(fun_name, "() cannot work with grouped data frames. Use dplyr::ungroup() ",
+         "to remove grouping from the data frame before calling ", fun_name, "()", call. = FALSE)
+  }
 
-  if (inherits(data, "tbl_sql")) { # or "tbl_lazy"?
-
+  if (data_object_uses_function_translations(out$data)) {
     tree <- unscope_all_expressions(tree)
+  }
 
-  } else if (is_grouped_df(data)) {
-
-    stop("query() cannot work with grouped data frames. Use dplyr::ungroup() ",
-         "to remove grouping from the data frame before calling query()")
-
-  } else if (!is.data.frame(data)) {
-
-    stop("Unsupported data object")
-
+  if (!query) {
+    out$data <- out$data %>% head(0L)
   }
 
   ### select clause stage 1 ###
-  tree$select <- replace_star_with_cols(tree$select, colnames(data))
+  tree$select <- replace_star_with_cols(tree$select, column_names(out$data))
 
   final_select_list <- tree$select
 
   alias_names <- names(tree$select)[names(tree$select) != ""]
   if (any(duplicated(alias_names))) {
-    stop("The same alias is assigned to two or more columns in the SELECT list")
+    stop("The same alias is assigned to two or more columns in the SELECT list", call. = FALSE)
   }
   alias_values <- tree$select[alias_names]
   aliases <- quote_full_expressions(alias_values)
 
   if (is.null(names(tree$select))) {
-    unaliased_select_exprs <- setdiff(vapply(tree$select, deparse, ""), colnames(data))
+    unaliased_exprs <- vapply(tree$select, deparse, "")
+    aliases_and_unaliased_exprs <- unaliased_exprs
   } else {
-    unaliased_select_exprs <- setdiff(vapply(tree$select, deparse, "")[names(tree$select) == ""], colnames(data))
+    unaliased_exprs <- vapply(tree$select, deparse, "")[names(tree$select) == ""]
+    aliases_and_unaliased_exprs <- vapply(replace_empty_names_with_values(names(tree$select), unname(tree$select)), deparse, "")
   }
+  if (any(duplicated(unaliased_exprs))) {
+    stop("The SELECT list includes two or more identical expressions with no aliases. Use aliases ",
+         "to give these expressions unique column names", call. = FALSE)
+  }
+  if (any(duplicated(aliases_and_unaliased_exprs))) {
+    stop("The SELECT list would result in two or more columns with identical names. Use aliases ",
+        "to assign unique column names to the expressions in the SELECT list", call. = FALSE)
+  }
+
+  if (is.null(names(tree$select))) {
+    unaliased_select_exprs <- setdiff(vapply(tree$select, deparse, ""), column_names(out$data))
+  } else {
+    unaliased_select_exprs <- setdiff(vapply(tree$select, deparse, "")[names(tree$select) == ""], column_names(out$data))
+  }
+
 
   ### where clause ###
   if (!is.null(tree$where)) {
 
     # SQL engines typically do not allow column aliases in the WHERE clause
     # so replace_aliases_with_values() is not called here
-    out <- out %>% filter(!!(tree$where[[1]]))
+    out <- out %>% verb(filter, !!(tree$where[[1]]))
 
   }
+
 
   ### group by clause ###
   if (!is.null(tree$group_by)) {
 
     tree$group_by <- replace_aliases_with_values(tree$group_by, alias_names, alias_values)
-    out <- out %>% group_by(!!!(tree$group_by))
+    out <- out %>% verb(group_by, !!!(tree$group_by))
 
   }
+
 
   ### having clause ###
   if (!is.null(tree$having)) {
 
     tree$having <- replace_aliases_with_values(tree$having, alias_names, alias_values)
-    out <- out %>% filter(!!(tree$having[[1]]))
+    out <- out %>% verb(filter, !!(tree$having[[1]]))
 
   }
 
+
   ### select clause stage 2 ###
+  cols_before <- column_names(out$data)
+
+  # if the ORDER BY or GROUP BY clause refers to one or more aliased expressions defined in the SELECT list
+  # not by its alias but using the same expression itself, then set use_quoted_deparsed_expressions to TRUE,
+  # indicating that additional steps are necessary to process this query
+  if (is.null(names(tree$select))) {
+    aliased_exprs <- setdiff(tree$select, column_names(out$data))
+  } else {
+    aliased_exprs <- setdiff(unname(tree$select[names(tree$select) != ""]), column_names(out$data))
+  }
+  use_quoted_deparsed_expressions <-
+    any(remove_desc_from_expressions(tree$order_by) %in% aliased_exprs) || any(tree$group_by %in% aliased_exprs)
+
   if (isTRUE(attr(tree, "aggregate"))) {
 
-    cols_to_include_in_summarise <- unique(append(
-      unname(tree$select[attr(tree$select, "aggregate")]),
-      remove_desc_from_expressions(tree$order_by[attr(tree$order_by, "aggregate")])
-    ))
-    out <- out %>% summarise(!!!(cols_to_include_in_summarise)) %>% ungroup()
+    if (any(!c(tree$group_by, remove_desc_from_expressions(tree$order_by)) %in%
+            replace_empty_names_with_values(names(tree$select), unname(tree$select)))) {
+      use_quoted_deparsed_expressions <- TRUE
+    }
 
-    if (length(aliases) > 0) {
-      out <- out %>% mutate(!!!aliases)
+    if (use_quoted_deparsed_expressions) {
+      cols_to_include_in_summarise <- unique(c(
+        unname(tree$select[attr(tree$select, "aggregate")]),
+        remove_desc_from_expressions(tree$order_by[attr(tree$order_by, "aggregate")])
+      ))
+      out <- out %>% verb(summarise, !!!(cols_to_include_in_summarise)) %>% verb(ungroup)
+    } else {
+      out <- out %>% verb(summarise, !!!(tree$select[attr(tree$select, "aggregate")])) %>% verb(ungroup)
     }
 
     cols_to_add_after_grouping <- tree$select[!attr(tree$select, "aggregate") & !tree$select %in% tree$group_by]
-    out <- out %>% mutate(!!!cols_to_add_after_grouping)
+    if (length(cols_to_add_after_grouping) > 0) {
+      out <- out %>% verb(mutate, !!!cols_to_add_after_grouping)
+    }
+
+    transmute_early <- FALSE
 
   } else if (isTRUE(attr(tree$select, "distinct"))) {
 
-    out <- out %>% distinct(!!!(unname(tree$select)))
-
-    if (length(aliases) > 0) {
-      out <- out %>% mutate(!!!aliases)
+    if (any(!remove_desc_from_expressions(tree$order_by) %in%
+            replace_empty_names_with_values(names(tree$select), unname(tree$select)))) {
+      use_quoted_deparsed_expressions <- TRUE
     }
+
+    if (use_quoted_deparsed_expressions) {
+      out <- out %>% verb(distinct, !!!(unname(tree$select)))
+    } else {
+      out <- out %>% verb(distinct, !!!(tree$select))
+    }
+
+    transmute_early <- FALSE
 
   } else {
 
-    if (any(!vapply(tree$select, deparse, "") %in% colnames(data))) {
-      cols_before <- colnames(out)
-      out <- out %>% mutate(!!!(unname(tree$select)))
-      cols_after <- colnames(out)
-
-      new_select_exprs <- setdiff(cols_after, c(cols_before, alias_names, alias_values))
-      if (!identical(new_select_exprs, unaliased_select_exprs)) {
-
-        if (length(new_select_exprs) < length(unaliased_select_exprs)) {
-
-          stop("The SELECT list includes two or more long expressions with no aliases assigned ",
-               "to them. You must assign aliases to these expressions")
-
-        } else if (length(new_select_exprs) == length(unaliased_select_exprs)) {
-
-          final_select_list[as.character(final_select_list) %in% unaliased_select_exprs] <-
-            lapply(new_select_exprs, as.name)
-
-        }
-      }
+    # if the ORDER BY clause refers only to aliases and unalised expressions that exist in the SELECT list,
+    # then set transmute_early to TRUE, indicating that we can use transmute() instead of mutate() at this
+    # stage, and omit the select() in a later stage
+    if (is.null(names(tree$select))) {
+      transmute_early <-
+        !use_quoted_deparsed_expressions && all(remove_desc_from_expressions(tree$order_by) %in% tree$select)
+    } else {
+      transmute_early <- !use_quoted_deparsed_expressions && all(
+        remove_desc_from_expressions(tree$order_by) %in% replace_empty_names_with_values(names(tree$select), unname(tree$select))
+      )
     }
 
+    if (transmute_early && all(vapply(tree$select, deparse, "") %in% column_names(out$data))) {
+      out <- out %>% verb(select, !!!(tree$select))
+    } else if (transmute_early) {
+      out <- out %>% verb(transmute, !!!(tree$select))
+    } else if (use_quoted_deparsed_expressions) {
+      out <- out %>% verb(mutate, !!!(unname(tree$select)))
+    } else {
+      out <- out %>% verb(mutate, !!!(tree$select))
+    }
+
+  }
+
+  cols_after <- column_names(out$data)
+
+  new_select_exprs <- setdiff(
+    c(cols_after),
+    setdiff(c(cols_before, alias_names, alias_values), lapply(tree$group_by, deparse))
+  )
+
+  if (!identical(new_select_exprs, unaliased_select_exprs)) {
+
+    if (length(new_select_exprs) < length(unaliased_select_exprs)) {
+
+      stop("The SELECT list includes two or more long expressions with no aliases assigned ",
+           "to them. You must assign aliases to these expressions", call. = FALSE)
+
+    } else if (length(new_select_exprs) == length(unaliased_select_exprs)) {
+
+      final_select_list[as.character(final_select_list) %in% unaliased_select_exprs] <-
+        lapply(new_select_exprs, as.name)
+
+    }
+  }
+
+  if (use_quoted_deparsed_expressions) {
+
     # when dplyr shortens the expressions in the column names, use the aliases instead
-    missing_exprs <- tree$select[which(!vapply(tree$select, deparse, "") %in% colnames(out))]
+    missing_exprs <- tree$select[which(!vapply(tree$select, deparse, "") %in% column_names(out$data))]
     if (length(missing_exprs) > 0) {
-      out <- out %>% mutate(!!!missing_exprs)
+      if (!isTRUE(attr(tree, "aggregate")) || length(setdiff(missing_exprs, cols_to_add_after_grouping)) > 0) {
+        out <- out %>% verb(mutate, !!!missing_exprs)
+      }
       aliases[names(missing_exprs)] <- NULL
       final_select_list[names(missing_exprs)] <-
         lapply(names(final_select_list[names(missing_exprs)]), as.name)
     }
 
     if (length(aliases) > 0) {
-      out <- out %>% mutate(!!!aliases)
+      out <- out %>% verb(mutate, !!!aliases)
     }
 
   }
+
 
   ### order by clause ###
   if (!is.null(tree$order_by)) {
@@ -257,32 +362,96 @@ query <- function(data, sql) {
         ))
       )
     }
-    out <- out %>% arrange(!!!(tree$order_by))
+    out <- out %>% verb(arrange, !!!(tree$order_by))
 
   }
+
 
   ### select clause stage 3 ###
   if (isTRUE(attr(tree, "aggregate"))) {
 
-    cols_to_return <- as.character(replace_values_with_aliases(tree$select, alias_values, alias_names))
-    out <- out %>% select(!!!cols_to_return)
+    if (is.null(names(final_select_list))) {
+      cols_to_return <- quote_full_expressions(final_select_list)
+    } else {
+      cols_to_return <- replace_empty_names_with_values(names(final_select_list), unname(final_select_list))
+      cols_to_return <- quote_full_expressions(cols_to_return)
+    }
+
+    if (length(cols_to_return) > 0 && length(cols_to_return) < ncol(out$data)) {
+      out <- out %>% verb(select, !!!cols_to_return)
+    }
 
   } else {
 
-    if (all(vapply(tree$select, deparse, "") %in% colnames(data))) {
-      out <- out %>% select(!!!(tree$select))
-    } else {
-      out <- out %>% transmute(!!!(quote_full_expressions(final_select_list)))
+    if (use_quoted_deparsed_expressions) {
+
+      out <- out %>% verb(transmute, !!!(quote_full_expressions(final_select_list)))
+
+    } else if (!transmute_early) {
+
+      if (is.null(names(final_select_list))) {
+        cols_to_return <- quote_full_expressions(final_select_list)
+      } else {
+        cols_to_return <- replace_empty_names_with_values(names(final_select_list), unname(final_select_list))
+        cols_to_return <- quote_full_expressions(cols_to_return)
+        if (!all(cols_to_return %in% final_select_list)) {
+          cols_to_return <- final_select_list
+        }
+      }
+
+      if (length(cols_to_return) > 0 && length(cols_to_return) < ncol(out$data)) {
+        out <- out %>% verb(select, !!!cols_to_return)
+      }
+
     }
 
   }
 
+
   ### limit clause ###
   if (!is.null(tree$limit)) {
 
-    out <- out %>% head(n = tree$limit[[1]])
+    out <- list(
+      code = paste0(out$code, " %>%\n  head(", tree$limit[[1]], ")"),
+      data = out$data %>% head(tree$limit[[1]])
+    )
 
   }
 
-  out
+  if (query) {
+    out$data
+  } else {
+    cat(out$code)
+    invisible(NULL)
+  }
+}
+
+verb <- function(input, fun, ...) {
+  list(
+    code = paste(
+      input$code,
+      paste0(deparse(substitute(fun)), "(", deparse_dots(...), ")"),
+      sep = " %>%\n  "
+    ),
+    data = input$data %>% fun(...)
+  )
+}
+
+#' @importFrom rlang exprs expr_deparse
+deparse_dots <- function(...) {
+  dots <- exprs(...)
+  if (length(dots) < 1) {
+    ""
+  } else {
+    # uncomment these lines after a version of rlang with
+    # https://github.com/r-lib/rlang/pull/897 merged is on CRAN
+    #if ("max_elements" %in% names(formals(expr_deparse))) {
+    #  output <- expr_deparse(dots, max_elements = NULL)
+    #} else {
+      output <- expr_deparse(dots)
+    #}
+    output <- paste0(trimws(output), collapse = " ")
+    output <- substr(output, 8, nchar(output) - 1)
+    output
+  }
 }
