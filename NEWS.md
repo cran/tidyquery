@@ -1,3 +1,9 @@
+# tidyquery 0.2.1
+
+* Works when `FROM` clause refers to data frame in non-global environment ([#12](https://github.com/ianmcook/tidyquery/issues/12))
+* Minor changes to support dplyr 1.0.0
+* Minor bugfixes and improvements
+
 # tidyquery 0.2.0
 
 * Works with the [dtplyr](https://dtplyr.tidyverse.org/) package (a [data.table](http://r-datatable.com/) backend for dplyr) ([#6](https://github.com/ianmcook/tidyquery/issues/6))

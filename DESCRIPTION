@@ -1,7 +1,7 @@
 Package: tidyquery
 Type: Package
 Title: Query 'R' Data Frames with 'SQL'
-Version: 0.2.0
+Version: 0.2.1
 Authors@R: c(
     person("Ian", "Cook", email = "ian@cloudera.com", role = c("aut", "cre")),
     person(family = "Cloudera", role = c("cph"))
@@ -16,12 +16,12 @@ Encoding: UTF-8
 RoxygenNote: 7.0.2
 Imports: dplyr (>= 0.7.4), lubridate (>= 1.6.0), queryparser (>=
         0.2.0), rlang (>= 0.2.0), stringr (>= 1.0.0), utils
-Suggests: covr (>= 3.2.0), dbplyr (>= 1.2.1), dtplyr (>= 1.0.0),
-        nycflights13, RSQLite (>= 2.1.0), testthat (>= 2.1.0)
+Suggests: covr (>= 3.2.0), DBI (>= 0.7), dbplyr (>= 1.2.1), dtplyr (>=
+        1.0.0), nycflights13, RSQLite (>= 2.1.0), testthat (>= 2.1.0)
 Collate: 'compat.R' 'query.R' 'join.R' 'quote.R' 'remove.R' 'replace.R'
         'show_dplyr.R' 'unscope.R'
-Packaged: 2020-01-20 18:29:08 UTC; icook
+Packaged: 2020-05-09 20:01:53 UTC; icook
 Author: Ian Cook [aut, cre],
   Cloudera [cph]
 Repository: CRAN
-Date/Publication: 2020-01-20 18:50:03 UTC
+Date/Publication: 2020-05-09 21:30:02 UTC
