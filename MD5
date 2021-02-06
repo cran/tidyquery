@@ -1,7 +1,7 @@
-d37f4905e08e4e727071b96e1467e6a3 *DESCRIPTION
-f3a879d5c20147c6e126d0964e1626af *NAMESPACE
-d816b58304b8e68c73ab3c1bd90d3e80 *NEWS.md
-e9a755d523facd7658c75a6c382f2f3a *R/compat.R
+a1921e7a4c92e9ea42ccd44142ec874c *DESCRIPTION
+90d55d9f935e3a5745de733bf77ef8d1 *NAMESPACE
+e943787706c34679cb773c20a97eadd1 *NEWS.md
+311e17d1033ca1c64de80cc13ff9056b *R/compat.R
 4b2803b9afc78ed8240da670f07a7a33 *R/join.R
 608051273ef5b3a399a6f80b37e88d1a *R/query.R
 7f69ffe34517de7c56702bdfc570097b *R/quote.R
@@ -9,7 +9,7 @@ b2821caaae9fb4689a4056c4a33a81ff *R/remove.R
 5beddfab5016c8bb144a63cf8b58e560 *R/replace.R
 a71119d07415266375cbccc30626eb55 *R/show_dplyr.R
 2626d8c935c4695749cf9e7b6a485a78 *R/unscope.R
-d77ef2c60ac2833500604c1fc77ffb7a *README.md
+1f8b300d7d0f4c456edef9435e33ad69 *README.md
 9d70516de0cc46d1b16f442c809dce78 *man/figures/logo.png
 27feba77459f6cef9aa514fc502ee465 *man/query.Rd
 690ca0ed0d37fea0f1e3ce6727f1077e *man/show_dplyr.Rd
@@ -19,7 +19,7 @@ d77ef2c60ac2833500604c1fc77ffb7a *README.md
 af9b85b9a2d0eb1aecdcf9200b588c71 *tests/testthat/test-aliases.R
 0b12bef39584d57a13d8fa1a3c3b8c04 *tests/testthat/test-conditional.R
 11aa58f39c9bd154c5e50db22616010b *tests/testthat/test-dbplyr.R
-b617f23c10c77b432274a2bba64c96cb *tests/testthat/test-dtplyr.R
+cda529fd51cd0491e25de9ed058f3b7e *tests/testthat/test-dtplyr.R
 9aea9b22b32bdfa205fca9a7858e0916 *tests/testthat/test-environments.R
 5cc166ec43d8c2461b73f37b8574ed14 *tests/testthat/test-errors.R
 1cb693ae3d376a9ab82e924bc13ea2e5 *tests/testthat/test-examples.R

@@ -1,3 +1,9 @@
+# tidyquery 0.2.2
+
+* Improves stability with dtplyr and data.table ([#17](https://github.com/ianmcook/tidyquery/issues/17))
+* Requires queryparser 0.3.1 or higher
+* Minor improvements
+
 # tidyquery 0.2.1
 
 * Works when `FROM` clause refers to data frame in non-global environment ([#12](https://github.com/ianmcook/tidyquery/issues/12))

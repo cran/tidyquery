@@ -11,6 +11,11 @@ translate SQL queries into R expressions, then it uses
 return results. **tidyquery** does not load data frames into a database;
 it queries them in place.
 
+For an introduction to **tidyquery** and **queryparser**, watch the
+recording of the talk [“Bridging the Gap between SQL and
+R”](https://www.youtube.com/watch?v=JwP5KdWSgqE) from
+rstudio::conf(2020).
+
 ## Installation
 
 Install the released version of **tidyquery** from
@@ -24,8 +29,8 @@ Or install the development version from
 [GitHub](https://github.com/ianmcook/tidyquery) with:
 
 ``` r
-# install.packages("devtools")
-devtools::install_github("ianmcook/tidyquery")
+# install.packages("remotes")
+remotes::install_github("ianmcook/tidyquery")
 ```
 
 ## Usage
@@ -109,10 +114,10 @@ case-insensitive (like in SQL).
 In addition to R data frames and tibbles (`tbl_df` objects), `query()`
 can be used to query other data frame-like objects, including:
 
-  - `dtplyr_step` objects created with
+-   `dtplyr_step` objects created with
     [dtplyr](https://dtplyr.tidyverse.org), a
     [data.table](http://r-datatable.com/) backend for dplyr
-  - `tbl_sql` objects created with
+-   `tbl_sql` objects created with
     [dbplyr](https://dbplyr.tidyverse.org) or a dbplyr backend package,
     enabling you to write SQL which is translated to dplyr then
     translated back to SQL and run in a database 🤪
@@ -150,14 +155,14 @@ or
 
 **tidyquery** also has the following additional limitations:
 
-  - Joins involving three or more tables are not supported.
-  - Because joins in dplyr currently work in a fundamentally different
+-   Joins involving three or more tables are not supported.
+-   Because joins in dplyr currently work in a fundamentally different
     way than joins in SQL, some other types of join queries are not
     supported. Examples of unsupported join queries include non-equijoin
     queries and outer join queries with qualified references to the join
     column(s). Planned changes in dplyr will enable future versions of
     tidyquery to support more types of joins.
-  - In the code printed by `show_dplyr()`, calls to functions with more
+-   In the code printed by `show_dplyr()`, calls to functions with more
     than five arguments might be truncated, with arguments after the
     fifth replaced with `...`. This is caused by a current limitation of
     the rlang package that is expected to be resolved in a future
@@ -170,6 +175,14 @@ The **sqldf** package ([CRAN](https://cran.r-project.org/package=sqldf),
 data frames by transparently setting up a database, loading data from R
 data frames into the database, running SQL queries in the database, and
 returning results as R data frames.
+
+The **duckdb** package
+([CRAN](https://cran.r-project.org/package=duckdb),
+[GitHub](https://github.com/cwida/duckdb/tree/master/tools/rpkg))
+includes the function `duckdb_register()` which registers an R data
+frame as a virtual table in a [DuckDB](https://duckdb.org) database,
+enabling you to run SQL queries on the data frame with
+`DBI::dbGetQuery()`.
 
 The **[dbplyr](https://dbplyr.tidyverse.org)** package
 ([CRAN](https://cran.r-project.org/package=dbplyr),
