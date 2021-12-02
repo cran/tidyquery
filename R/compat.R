@@ -1,4 +1,4 @@
-# Copyright 2020 Cloudera Inc.
+# Copyright 2021 Cloudera Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ is_grouped_data_object <- function(obj) {
   }
 }
 data_object_uses_function_translations <- function(obj) {
-   inherits(obj, c("tbl_sql", "dtplyr_step", "disk.frame"))
+  inherits(obj, c("tbl_sql", "dtplyr_step", "disk.frame"))
 }
 column_names <- function(obj) {
   if (inherits(obj, "dtplyr_step")) {
@@ -51,3 +51,7 @@ column_names <- function(obj) {
 # Temporary fix for https://github.com/tidyverse/dtplyr/issues/184
 #' @export
 .datatable.aware <- TRUE
+
+# Export version number for use by queryparser
+#' @export
+.tidyquery.version <- packageVersion("tidyquery")

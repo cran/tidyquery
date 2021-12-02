@@ -162,11 +162,6 @@ or
     queries and outer join queries with qualified references to the join
     column(s). Planned changes in dplyr will enable future versions of
     tidyquery to support more types of joins.
--   In the code printed by `show_dplyr()`, calls to functions with more
-    than five arguments might be truncated, with arguments after the
-    fifth replaced with `...`. This is caused by a current limitation of
-    the rlang package that is expected to be resolved in a future
-    version.
 
 ## Related Work
 
@@ -178,7 +173,7 @@ returning results as R data frames.
 
 The **duckdb** package
 ([CRAN](https://cran.r-project.org/package=duckdb),
-[GitHub](https://github.com/cwida/duckdb/tree/master/tools/rpkg))
+[GitHub](https://github.com/duckdb/duckdb/tree/master/tools/rpkg))
 includes the function `duckdb_register()` which registers an R data
 frame as a virtual table in a [DuckDB](https://duckdb.org) database,
 enabling you to run SQL queries on the data frame with
@@ -189,3 +184,10 @@ The **[dbplyr](https://dbplyr.tidyverse.org)** package
 [GitHub](https://github.com/tidyverse/dbplyr)) is like tidyquery in
 reverse: it converts dplyr code into SQL, allowing you to use dplyr to
 work with data in a database.
+
+In **Python**, the
+[**dataframe\_sql**](https://github.com/zbrookle/dataframe_sql) package
+(targeting [**pandas**](https://pandas.pydata.org)) and the
+[**sql\_to\_ibis**](https://github.com/zbrookle/sql_to_ibis) package
+(targeting [**Ibis**](https://ibis-project.org)) are analogous to
+tidyquery.

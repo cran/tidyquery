@@ -1,4 +1,4 @@
-# Copyright 2020 Cloudera Inc.
+# Copyright 2021 Cloudera Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,7 +23,8 @@
 #'   dplyr code like \code{query} does, \code{show_dplyr} prints the dplyr code.
 #'
 #'   In function calls in the printed code, long lists of arguments may be
-#'   truncated and appended with \code{...}.
+#'   truncated and appended with \code{...} if you have an older version of the
+#'   rlang package installed. To fix this, update to a newer version of rlang.
 #' @examples
 #' library(dplyr)
 #' library(nycflights13)
